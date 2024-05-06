@@ -114,7 +114,62 @@ SELECT user_id
 FROM accumulated_data;
 
 -- EX6: Repeated Payments
+WITH full_info AS
+(
+  SELECT merchant_id
+  , credit_card_id
+  , amount
+  , transaction_timestamp AS next_trans
+  , LAG(transaction_timestamp) OVER(PARTITION BY merchant_id, credit_card_id, amount ORDER BY merchant_id, credit_card_id, transaction_timestamp) AS first_trans
+  , COUNT(*) OVER(PARTITION BY merchant_id, credit_card_id, amount ORDER BY merchant_id, credit_card_id, amount)
+  FROM transactions
+)
+, repeat_payment AS
+(
+  SELECT merchant_id
+  , credit_card_id
+  , amount
+  , EXTRACT(hour FROM (next_trans-first_trans))*60+ EXTRACT(minute FROM (next_trans-first_trans))AS time_btw_trans
+  FROM full_info
+)
+
+SELECT COUNT(*) AS payment_count
+FROM repeat_payment
+WHERE time_btw_trans<=10;
 
 -- EX7: Highest-Grossing Items 
+SELECT category
+, product
+, total_spend
+FROM 
+(
+SELECT category
+, product
+, SUM(spend) AS total_spend
+, RANK() OVER (PARTITION BY category ORDER BY SUM(spend) DESC) AS spend_rank
+FROM product_spend 
+WHERE EXTRACT(year FROM transaction_date) =2022
+GROUP BY category,product
+) AS ranked_data
+WHERE spend_rank IN (1,2)
 
 -- EX8: Top 5 Artists 
+WITH artist_top10 AS
+(
+SELECT ART.artist_name
+, COUNT(*) AS chart_frequency
+, DENSE_RANK() OVER(ORDER BY COUNT(*) DESC) AS artist_rank
+FROM global_song_rank AS GR
+JOIN songs AS SO
+  ON GR.song_id = SO.song_id
+JOIN artists AS ART
+  ON SO.artist_id = ART.artist_id
+WHERE GR.rank <=10
+GROUP BY ART.artist_name
+)
+
+SELECT artist_name
+, artist_rank
+FROM artist_top10
+WHERE artist_rank <6
+ORDER BY artist_rank ASC
