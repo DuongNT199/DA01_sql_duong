@@ -128,7 +128,23 @@ WHERE pid IN (SELECT pid FROM final_to_sum)
 https://leetcode.com/problems/investments-in-2016/solutions/5040471/explained-perfomand-postgresql-solution-beats-94
 */
 -- ex6: leetcode-department-top-three-salaries.
+-- Write your PostgreSQL query statement below
+SELECT Department
+, Employee
+, Salary
+FROM 
+(
+    SELECT DP.name AS Department 
+    , EMP.name AS Employee 
+    , EMP.salary AS Salary 
+    , DENSE_RANK() OVER (PARTITION BY DP.name ORDER BY EMP.salary DESC) AS rank_salary
+    FROM Employee AS EMP
+    INNER JOIN Department AS DP
+        ON EMP.departmentId = DP.id
+) AS rank_data
+WHERE rank_salary<=3
 
+    
 -- ex7: leetcode-last-person-to-fit-in-the-bus.
 SELECT person_name
 FROM 
